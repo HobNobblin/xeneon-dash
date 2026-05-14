@@ -27,6 +27,7 @@ async function init() {
   const ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onmessage = ({ data }) => {
     const msg = JSON.parse(data);
+    if (msg.type === "reload") { init(); return; }
     for (const iframe of iframes) {
       iframe.contentWindow?.postMessage(msg, "*");
     }

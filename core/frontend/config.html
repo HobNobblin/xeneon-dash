@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Xeneon Dash — Layout Config</title>
+  <link rel="stylesheet" href="/theme.css">
+  <style>
+    body {
+      background: #07070f;
+      padding: 28px 32px;
+      gap: 16px;
+      height: 100vh;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #status {
+      font-size: 11px;
+      letter-spacing: 1px;
+      transition: color 0.3s;
+    }
+    #status.saved  { color: var(--up); }
+    #status.unsaved { color: var(--text-muted); }
+    #status.error  { color: var(--down); }
+
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 7px 22px;
+      font-family: var(--font);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:hover { opacity: 0.8; }
+
+    .hint-text {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-left: auto;
+      letter-spacing: 1px;
+    }
+
+    /* ── Grid editor ───────────────────────────────────────── */
+    #editor-wrap {
+      flex: 1;
+      min-height: 0;
+      border: 1px solid var(--bg-raised);
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #grid-bg {
+      position: absolute;
+      inset: 0;
+      display: grid;
+    }
+
+    .grid-cell {
+      border-right: 1px solid rgba(85, 85, 204, 0.08);
+      border-bottom: 1px solid rgba(85, 85, 204, 0.08);
+    }
+
+    /* ── Widget blocks ─────────────────────────────────────── */
+    .wblock {
+      position: absolute;
+      border-radius: 6px;
+      border: 2px solid;
+      padding: 10px 12px;
+      cursor: grab;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: box-shadow 0.15s;
+    }
+
+    .wblock:active { cursor: grabbing; }
+
+    .wblock.dragging {
+      opacity: 0.55;
+      box-shadow: 0 0 24px rgba(85, 85, 204, 0.4);
+      z-index: 10;
+    }
+
+    .wblock .wid {
+      font-size: 12px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .wblock .wdims {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .resize-handle {
+      position: absolute;
+      right: 5px;
+      bottom: 5px;
+      width: 13px;
+      height: 13px;
+      cursor: se-resize;
+      border-right: 2px solid currentColor;
+      border-bottom: 2px solid currentColor;
+      border-radius: 0 0 2px 0;
+      opacity: 0.6;
+    }
+
+    .resize-handle:hover { opacity: 1; }
+
+    /* ── Ghost (drop preview) ──────────────────────────────── */
+    #ghost {
+      position: absolute;
+      border-radius: 6px;
+      border: 2px dashed;
+      pointer-events: none;
+      display: none;
+      transition: background 0.1s, border-color 0.1s;
+    }
+
+    #ghost.valid {
+      background: rgba(0, 200, 80, 0.12);
+      border-color: var(--up);
+    }
+
+    #ghost.invalid {
+      background: rgba(220, 40, 40, 0.12);
+      border-color: var(--down);
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-header">
+    <span class="title">Layout Config</span>
+    <div class="toolbar">
+      <button onclick="saveConfig()">Save</button>
+      <span id="status" class="unsaved"></span>
+      <span class="hint-text">drag to move &nbsp;·&nbsp; drag corner to resize</span>
+    </div>
+  </div>
+
+  <div id="editor-wrap">
+    <div id="grid-bg"></div>
+    <div id="ghost"></div>
+  </div>
+
+  <script>
+    // ── Palette ───────────────────────────────────────────────
+    const PALETTE = [
+      "#4466cc", "#44aacc", "#cc8844", "#44cc88",
+      "#8844cc", "#cc4488", "#88cc44", "#cc6644",
+    ];
+
+    function widgetColor(id) {
+      let h = 0;
+      for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      return PALETTE[h % PALETTE.length];
+    }
+
+    // ── State ─────────────────────────────────────────────────
+    let cfg = null;
+    let drag = null; // { widget, el, offsetX, offsetY }
+    let rsz  = null; // { widget, el, startW, startH, startMX, startMY }
+
+    // ── Init ──────────────────────────────────────────────────
+    async function init() {
+      cfg = await fetch("/api/config").then(r => r.json());
+      buildGrid();
+      buildBlocks();
+    }
+
+    function cellSize() {
+      const rect = document.getElementById("editor-wrap").getBoundingClientRect();
+      return {
+        cw: rect.width  / cfg.display.columns,
+        ch: rect.height / cfg.display.rows,
+      };
+    }
+
+    function buildGrid() {
+      const bg = document.getElementById("grid-bg");
+      const { columns, rows } = cfg.display;
+      bg.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+      bg.style.gridTemplateRows    = `repeat(${rows}, 1fr)`;
+      bg.innerHTML = "";
+      for (let i = 0; i < columns * rows; i++) {
+        const c = document.createElement("div");
+        c.className = "grid-cell";
+        bg.appendChild(c);
+      }
+    }
+
+    function buildBlocks() {
+      document.querySelectorAll(".wblock").forEach(el => el.remove());
+      const wrap  = document.getElementById("editor-wrap");
+      const { cw, ch } = cellSize();
+      const color = {};
+
+      for (const w of cfg.widgets) {
+        const c = widgetColor(w.id);
+        color[w.id] = c;
+
+        const el = document.createElement("div");
+        el.className  = "wblock";
+        el.dataset.id = w.id;
+        el.style.borderColor     = c;
+        el.style.backgroundColor = c + "18";
+        el.style.color           = c;
+        el.innerHTML = `
+          <span class="wid">${w.id}</span>
+          <span class="wdims" id="dims-${w.id}">${w.position.w} × ${w.position.h}</span>
+          <div class="resize-handle"></div>`;
+
+        placeBlock(el, w.position, cw, ch);
+
+        el.addEventListener("mousedown", e => {
+          if (e.target.classList.contains("resize-handle")) return;
+          e.preventDefault();
+          const r = el.getBoundingClientRect();
+          drag = { widget: w, el, offsetX: e.clientX - r.left, offsetY: e.clientY - r.top };
+          el.classList.add("dragging");
+        });
+
+        el.querySelector(".resize-handle").addEventListener("mousedown", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          rsz = {
+            widget: w, el,
+            startW: w.position.w, startH: w.position.h,
+            startMX: e.clientX,   startMY: e.clientY,
+          };
+          el.classList.add("dragging");
+        });
+
+        wrap.appendChild(el);
+      }
+    }
+
+    function placeBlock(el, pos, cw, ch) {
+      el.style.left   = `${pos.x * cw}px`;
+      el.style.top    = `${pos.y * ch}px`;
+      el.style.width  = `${pos.w * cw}px`;
+      el.style.height = `${pos.h * ch}px`;
+    }
+
+    // ── Collision ─────────────────────────────────────────────
+    function occupancy(excludeId) {
+      const { columns: cols, rows } = cfg.display;
+      const map = Array.from({ length: rows }, () => new Array(cols).fill(null));
+      for (const w of cfg.widgets) {
+        if (w.id === excludeId) continue;
+        for (let r = w.position.y; r < w.position.y + w.position.h; r++)
+          for (let c = w.position.x; c < w.position.x + w.position.w; c++)
+            if (r < rows && c < cols) map[r][c] = w.id;
+      }
+      return map;
+    }
+
+    function canPlace(id, x, y, w, h) {
+      const { columns: cols, rows } = cfg.display;
+      if (x < 0 || y < 0 || x + w > cols || y + h > rows) return false;
+      const map = occupancy(id);
+      for (let r = y; r < y + h; r++)
+        for (let c = x; c < x + w; c++)
+          if (map[r][c] !== null) return false;
+      return true;
+    }
+
+    // ── Mouse events ──────────────────────────────────────────
+    document.addEventListener("mousemove", e => {
+      if (!drag && !rsz) return;
+      const wrap = document.getElementById("editor-wrap");
+      const wr   = wrap.getBoundingClientRect();
+      const { cw, ch } = cellSize();
+      const ghost = document.getElementById("ghost");
+
+      if (drag) {
+        const rawX = e.clientX - wr.left - drag.offsetX;
+        const rawY = e.clientY - wr.top  - drag.offsetY;
+        drag.el.style.left = `${rawX}px`;
+        drag.el.style.top  = `${rawY}px`;
+
+        const col = Math.round(rawX / cw);
+        const row = Math.round(rawY / ch);
+        const { w, h } = drag.widget.position;
+        const valid = canPlace(drag.widget.id, col, row, w, h);
+
+        ghost.style.display = "block";
+        ghost.style.left    = `${col * cw}px`;
+        ghost.style.top     = `${row * ch}px`;
+        ghost.style.width   = `${w * cw}px`;
+        ghost.style.height  = `${h * ch}px`;
+        ghost.className     = `valid ${valid ? "valid" : "invalid"}`;
+        ghost.dataset.col   = col;
+        ghost.dataset.row   = row;
+      }
+
+      if (rsz) {
+        const dx  = e.clientX - rsz.startMX;
+        const dy  = e.clientY - rsz.startMY;
+        const { columns: cols, rows } = cfg.display;
+        const { x, y } = rsz.widget.position;
+        const w = Math.max(1, Math.min(cols - x, rsz.startW + Math.round(dx / cw)));
+        const h = Math.max(1, Math.min(rows - y, rsz.startH + Math.round(dy / ch)));
+        const valid = canPlace(rsz.widget.id, x, y, w, h);
+
+        ghost.style.display = "block";
+        ghost.style.left    = `${x * cw}px`;
+        ghost.style.top     = `${y * ch}px`;
+        ghost.style.width   = `${w * cw}px`;
+        ghost.style.height  = `${h * ch}px`;
+        ghost.className     = valid ? "valid" : "invalid";
+        ghost.dataset.w     = w;
+        ghost.dataset.h     = h;
+      }
+    });
+
+    document.addEventListener("mouseup", e => {
+      const ghost = document.getElementById("ghost");
+      ghost.style.display = "none";
+
+      if (drag) {
+        const wrap = document.getElementById("editor-wrap");
+        const wr   = wrap.getBoundingClientRect();
+        const { cw, ch } = cellSize();
+        const rawX = e.clientX - wr.left - drag.offsetX;
+        const rawY = e.clientY - wr.top  - drag.offsetY;
+        const col  = Math.round(rawX / cw);
+        const row  = Math.round(rawY / ch);
+        const { w, h } = drag.widget.position;
+
+        if (canPlace(drag.widget.id, col, row, w, h)) {
+          drag.widget.position.x = col;
+          drag.widget.position.y = row;
+          setStatus("unsaved changes", "unsaved");
+        }
+
+        drag.el.classList.remove("dragging");
+        drag = null;
+        buildBlocks();
+      }
+
+      if (rsz) {
+        const { cw, ch } = cellSize();
+        const dx  = e.clientX - rsz.startMX;
+        const dy  = e.clientY - rsz.startMY;
+        const { columns: cols, rows } = cfg.display;
+        const { x, y } = rsz.widget.position;
+        const w = Math.max(1, Math.min(cols - x, rsz.startW + Math.round(dx / cw)));
+        const h = Math.max(1, Math.min(rows - y, rsz.startH + Math.round(dy / ch)));
+
+        if (canPlace(rsz.widget.id, x, y, w, h)) {
+          rsz.widget.position.w = w;
+          rsz.widget.position.h = h;
+          setStatus("unsaved changes", "unsaved");
+        }
+
+        rsz.el.classList.remove("dragging");
+        rsz = null;
+        buildBlocks();
+      }
+    });
+
+    // ── Save ──────────────────────────────────────────────────
+    async function saveConfig() {
+      try {
+        const res = await fetch("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cfg),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        setStatus("saved", "saved");
+        setTimeout(() => setStatus("", "unsaved"), 2000);
+      } catch (err) {
+        setStatus("save failed", "error");
+        console.error(err);
+      }
+    }
+
+    function setStatus(msg, cls) {
+      const el = document.getElementById("status");
+      el.textContent = msg;
+      el.className   = cls;
+    }
+
+    window.addEventListener("resize", () => {
+      buildGrid();
+      buildBlocks();
+    });
+
+    init();
+  </script>
+</body>
+</html>

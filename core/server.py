@@ -8,8 +8,8 @@ from pathlib import Path
 import psutil
 import uvicorn
 import yaml
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).parent.parent
@@ -100,6 +100,25 @@ app = FastAPI(lifespan=lifespan)
 @app.get("/api/config")
 def get_config():
     return load_config()
+
+
+@app.post("/api/config")
+async def save_config(request: Request):
+    data = await request.json()
+    with open(ROOT / "config.yaml", "w") as f:
+        yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    msg = json.dumps({"type": "reload"})
+    for ws in list(connected):
+        try:
+            await ws.send_text(msg)
+        except Exception:
+            pass
+    return {"status": "ok"}
+
+
+@app.get("/config")
+def config_page():
+    return FileResponse(FRONTEND_DIR / "config.html")
 
 
 @app.get("/api/widgets")
