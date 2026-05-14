@@ -1,0 +1,6 @@
+{
+  "id": "cpu",
+  "name": "CPU Usage",
+  "description": "Per-core CPU usage with overall percentage and temperature",
+  "defaultSize": { "w": 6, "h": 3 }
+}

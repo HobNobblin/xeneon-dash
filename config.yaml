@@ -1,0 +1,7 @@
+display:
+  columns: 12
+  rows: 3
+
+widgets:
+  - id: cpu
+    position: { x: 0, y: 0, w: 6, h: 3 }

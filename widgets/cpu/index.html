@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d1a;
+      color: #c8c8ff;
+      font-family: 'Courier New', monospace;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 14px;
+      gap: 10px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: #5555cc;
+    }
+
+    .summary {
+      display: flex;
+      gap: 16px;
+      align-items: baseline;
+    }
+
+    .big-pct {
+      font-size: 28px;
+      font-weight: bold;
+      color: #aaaaff;
+      line-height: 1;
+    }
+
+    .meta {
+      font-size: 11px;
+      color: #606090;
+    }
+
+    .cores {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+      gap: 6px;
+      align-items: end;
+    }
+
+    .core {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      height: 100%;
+    }
+
+    .bar-track {
+      flex: 1;
+      width: 100%;
+      background: #1a1a30;
+      border-radius: 3px;
+      position: relative;
+      overflow: hidden;
+      min-height: 40px;
+    }
+
+    .bar-fill {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      border-radius: 3px 3px 0 0;
+      transition: height 0.6s ease, background-color 0.6s ease;
+    }
+
+    .core-label {
+      font-size: 9px;
+      color: #50508a;
+      letter-spacing: 1px;
+    }
+
+    .core-pct {
+      font-size: 10px;
+      font-weight: bold;
+      min-width: 30px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="title">CPU</span>
+    <div class="summary">
+      <span class="big-pct" id="overall">—</span>
+      <span class="meta" id="temp"></span>
+    </div>
+  </header>
+  <div class="cores" id="cores"></div>
+
+  <script src="/xeneon.js"></script>
+  <script>
+    let initialized = false;
+
+    function hue(pct) {
+      // 220 (blue) at 0% → 280 (purple) at 70% → 0 (red) at 100%
+      return Math.round(220 - pct * 2.2);
+    }
+
+    xeneon.on("tick", ({ cpu }) => {
+      document.getElementById("overall").textContent = `${Math.round(cpu.percent)}%`;
+
+      if (cpu.temp != null) {
+        document.getElementById("temp").textContent = `${cpu.temp}°C`;
+      }
+
+      const container = document.getElementById("cores");
+
+      if (!initialized) {
+        initialized = true;
+        container.innerHTML = cpu.per_core.map((_, i) => `
+          <div class="core">
+            <div class="bar-track">
+              <div class="bar-fill" id="bar-${i}" style="height:0%"></div>
+            </div>
+            <div class="core-pct" id="pct-${i}">0%</div>
+            <div class="core-label">C${i}</div>
+          </div>
+        `).join("");
+      }
+
+      cpu.per_core.forEach((pct, i) => {
+        const bar = document.getElementById(`bar-${i}`);
+        const label = document.getElementById(`pct-${i}`);
+        if (!bar) return;
+        bar.style.height = `${pct}%`;
+        bar.style.backgroundColor = `hsl(${hue(pct)}, 75%, 55%)`;
+        label.textContent = `${Math.round(pct)}%`;
+        label.style.color = `hsl(${hue(pct)}, 60%, 70%)`;
+      });
+    });
+  </script>
+</body>
+</html>
