@@ -3,6 +3,8 @@
 Xeneon Dash is a modular dashboard system for the Corsair Xeneon Edge. It runs a local web server and renders independently-written widgets
 in a configurable grid layout on the 2560×720 display.
 
+![Dashboard Screenshot](./screenshot1.png)
+
 ## Architecture
 
 * core/server.py — a FastAPI backend that collects system metrics every second and broadcasts them over a WebSocket to all connected clients.
