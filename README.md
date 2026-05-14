@@ -27,3 +27,6 @@ span.
 Launch is a single ./launch.sh that bootstraps the venv on first run, kills any leftover server, starts the backend, maps touch input to
 DP-1, and opens the kiosk window on the Xeneon.
 
+# Dashboard Configuration
+
+The application will serve a configuration page at http://localhost:8000/config to allow for widget placement and sizing. Upon saving the config on the web page changes will be saved to the config.yaml file.

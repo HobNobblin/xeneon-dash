@@ -8,7 +8,7 @@
     body {
       background: #07070f;
       padding: 28px 32px;
-      gap: 16px;
+      gap: 14px;
       height: 100vh;
     }
 
@@ -18,14 +18,10 @@
       gap: 16px;
     }
 
-    #status {
-      font-size: 11px;
-      letter-spacing: 1px;
-      transition: color 0.3s;
-    }
-    #status.saved  { color: var(--up); }
+    #status { font-size: 11px; letter-spacing: 1px; transition: color 0.3s; }
+    #status.saved   { color: var(--up); }
     #status.unsaved { color: var(--text-muted); }
-    #status.error  { color: var(--down); }
+    #status.error   { color: var(--down); }
 
     button {
       background: var(--accent);
@@ -65,7 +61,7 @@
     }
 
     .grid-cell {
-      border-right: 1px solid rgba(85, 85, 204, 0.08);
+      border-right:  1px solid rgba(85, 85, 204, 0.08);
       border-bottom: 1px solid rgba(85, 85, 204, 0.08);
     }
 
@@ -74,68 +70,122 @@
       position: absolute;
       border-radius: 6px;
       border: 2px solid;
-      padding: 10px 12px;
+      padding: 8px 10px;
       cursor: grab;
       user-select: none;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      transition: box-shadow 0.15s;
+      gap: 3px;
     }
 
     .wblock:active { cursor: grabbing; }
-
-    .wblock.dragging {
-      opacity: 0.55;
-      box-shadow: 0 0 24px rgba(85, 85, 204, 0.4);
-      z-index: 10;
-    }
+    .wblock.dragging { opacity: 0.5; z-index: 10; }
 
     .wblock .wid {
-      font-size: 12px;
+      font-size: 11px;
       font-weight: bold;
       text-transform: uppercase;
       letter-spacing: 2px;
     }
 
-    .wblock .wdims {
-      font-size: 10px;
+    .wblock .wdims { font-size: 10px; color: var(--text-muted); }
+
+    .remove-btn {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      background: none;
+      border: none;
       color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      font-family: var(--font);
     }
+    .remove-btn:hover { color: var(--down); background: none; }
 
     .resize-handle {
       position: absolute;
       right: 5px;
       bottom: 5px;
-      width: 13px;
-      height: 13px;
+      width: 12px;
+      height: 12px;
       cursor: se-resize;
-      border-right: 2px solid currentColor;
+      border-right:  2px solid currentColor;
       border-bottom: 2px solid currentColor;
       border-radius: 0 0 2px 0;
-      opacity: 0.6;
+      opacity: 0.5;
     }
-
     .resize-handle:hover { opacity: 1; }
 
-    /* ── Ghost (drop preview) ──────────────────────────────── */
+    /* ── Ghost ─────────────────────────────────────────────── */
     #ghost {
       position: absolute;
       border-radius: 6px;
       border: 2px dashed;
       pointer-events: none;
       display: none;
-      transition: background 0.1s, border-color 0.1s;
+    }
+    #ghost.valid   { background: rgba(0,200,80,0.12);  border-color: var(--up); }
+    #ghost.invalid { background: rgba(220,40,40,0.12); border-color: var(--down); }
+
+    /* ── Palette ───────────────────────────────────────────── */
+    #palette-wrap {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 52px;
     }
 
-    #ghost.valid {
-      background: rgba(0, 200, 80, 0.12);
-      border-color: var(--up);
+    .palette-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      flex-shrink: 0;
     }
 
-    #ghost.invalid {
-      background: rgba(220, 40, 40, 0.12);
-      border-color: var(--down);
+    #palette {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .palette-item {
+      border: 2px solid;
+      border-radius: 5px;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      cursor: grab;
+      user-select: none;
+    }
+    .palette-item:active { cursor: grabbing; opacity: 0.6; }
+
+    .palette-empty {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+
+    /* Floating drag proxy (for palette → grid drags) */
+    #drag-proxy {
+      position: fixed;
+      pointer-events: none;
+      border-radius: 5px;
+      border: 2px solid;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      display: none;
+      z-index: 100;
+      opacity: 0.8;
     }
   </style>
 </head>
@@ -145,7 +195,7 @@
     <div class="toolbar">
       <button onclick="saveConfig()">Save</button>
       <span id="status" class="unsaved"></span>
-      <span class="hint-text">drag to move &nbsp;·&nbsp; drag corner to resize</span>
+      <span class="hint-text">drag to move &nbsp;·&nbsp; drag corner to resize &nbsp;·&nbsp; drag from palette to add</span>
     </div>
   </div>
 
@@ -154,37 +204,50 @@
     <div id="ghost"></div>
   </div>
 
+  <div id="palette-wrap">
+    <span class="palette-label">Available</span>
+    <div id="palette"></div>
+  </div>
+
+  <div id="drag-proxy"></div>
+
   <script>
     // ── Palette ───────────────────────────────────────────────
-    const PALETTE = [
-      "#4466cc", "#44aacc", "#cc8844", "#44cc88",
-      "#8844cc", "#cc4488", "#88cc44", "#cc6644",
+    const PALETTE_COLORS = [
+      "#4466cc","#44aacc","#cc8844","#44cc88",
+      "#8844cc","#cc4488","#88cc44","#cc6644",
     ];
 
     function widgetColor(id) {
       let h = 0;
       for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-      return PALETTE[h % PALETTE.length];
+      return PALETTE_COLORS[h % PALETTE_COLORS.length];
     }
 
     // ── State ─────────────────────────────────────────────────
-    let cfg = null;
-    let drag = null; // { widget, el, offsetX, offsetY }
-    let rsz  = null; // { widget, el, startW, startH, startMX, startMY }
+    let cfg        = null;
+    let manifests  = {};   // id → manifest
+    let drag       = null; // { widget|null, el, offsetX, offsetY, fromPalette? }
+    let rsz        = null;
 
     // ── Init ──────────────────────────────────────────────────
     async function init() {
-      cfg = await fetch("/api/config").then(r => r.json());
+      [cfg, manifests] = await Promise.all([
+        fetch("/api/config").then(r => r.json()),
+        fetch("/api/widgets").then(r => r.json()).then(arr => {
+          const m = {};
+          arr.forEach(w => m[w.id] = w);
+          return m;
+        }),
+      ]);
       buildGrid();
       buildBlocks();
+      buildPalette();
     }
 
     function cellSize() {
-      const rect = document.getElementById("editor-wrap").getBoundingClientRect();
-      return {
-        cw: rect.width  / cfg.display.columns,
-        ch: rect.height / cfg.display.rows,
-      };
+      const r = document.getElementById("editor-wrap").getBoundingClientRect();
+      return { cw: r.width / cfg.display.columns, ch: r.height / cfg.display.rows };
     }
 
     function buildGrid() {
@@ -202,29 +265,36 @@
 
     function buildBlocks() {
       document.querySelectorAll(".wblock").forEach(el => el.remove());
-      const wrap  = document.getElementById("editor-wrap");
+      const wrap = document.getElementById("editor-wrap");
       const { cw, ch } = cellSize();
-      const color = {};
 
       for (const w of cfg.widgets) {
-        const c = widgetColor(w.id);
-        color[w.id] = c;
-
-        const el = document.createElement("div");
+        const color = widgetColor(w.id);
+        const el    = document.createElement("div");
         el.className  = "wblock";
         el.dataset.id = w.id;
-        el.style.borderColor     = c;
-        el.style.backgroundColor = c + "18";
-        el.style.color           = c;
+        el.style.borderColor     = color;
+        el.style.backgroundColor = color + "18";
+        el.style.color           = color;
         el.innerHTML = `
+          <button class="remove-btn" title="Remove">×</button>
           <span class="wid">${w.id}</span>
-          <span class="wdims" id="dims-${w.id}">${w.position.w} × ${w.position.h}</span>
+          <span class="wdims">${w.position.w} × ${w.position.h}</span>
           <div class="resize-handle"></div>`;
 
         placeBlock(el, w.position, cw, ch);
 
+        el.querySelector(".remove-btn").addEventListener("click", e => {
+          e.stopPropagation();
+          cfg.widgets = cfg.widgets.filter(x => x.id !== w.id);
+          setStatus("unsaved changes", "unsaved");
+          buildBlocks();
+          buildPalette();
+        });
+
         el.addEventListener("mousedown", e => {
           if (e.target.classList.contains("resize-handle")) return;
+          if (e.target.classList.contains("remove-btn"))   return;
           e.preventDefault();
           const r = el.getBoundingClientRect();
           drag = { widget: w, el, offsetX: e.clientX - r.left, offsetY: e.clientY - r.top };
@@ -234,15 +304,61 @@
         el.querySelector(".resize-handle").addEventListener("mousedown", e => {
           e.preventDefault();
           e.stopPropagation();
-          rsz = {
-            widget: w, el,
-            startW: w.position.w, startH: w.position.h,
-            startMX: e.clientX,   startMY: e.clientY,
-          };
+          rsz = { widget: w, el, startW: w.position.w, startH: w.position.h,
+                  startMX: e.clientX, startMY: e.clientY };
           el.classList.add("dragging");
         });
 
         wrap.appendChild(el);
+      }
+    }
+
+    function buildPalette() {
+      const palette  = document.getElementById("palette");
+      const placedIds = new Set(cfg.widgets.map(w => w.id));
+      const unplaced  = Object.values(manifests).filter(m => !placedIds.has(m.id));
+
+      palette.innerHTML = unplaced.length === 0
+        ? '<span class="palette-empty">all widgets placed</span>'
+        : "";
+
+      for (const m of unplaced) {
+        const color = widgetColor(m.id);
+        const el    = document.createElement("div");
+        el.className  = "palette-item";
+        el.dataset.id = m.id;
+        el.textContent = m.id;
+        el.style.borderColor     = color;
+        el.style.color           = color;
+        el.style.backgroundColor = color + "18";
+
+        el.addEventListener("mousedown", e => {
+          e.preventDefault();
+          const proxy = document.getElementById("drag-proxy");
+          proxy.textContent        = m.id;
+          proxy.style.display      = "block";
+          proxy.style.borderColor  = color;
+          proxy.style.color        = color;
+          proxy.style.background   = color + "22";
+          proxy.style.left         = `${e.clientX - 30}px`;
+          proxy.style.top          = `${e.clientY - 16}px`;
+
+          const defaultW = m.defaultSize?.w ?? 3;
+          const defaultH = m.defaultSize?.h ?? 3;
+
+          drag = {
+            widget: null,
+            manifest: m,
+            defaultW,
+            defaultH,
+            el: proxy,
+            offsetX: 30,
+            offsetY: 16,
+            fromPalette: true,
+          };
+        });
+
+        palette.appendChild(el);
       }
     }
 
@@ -276,31 +392,62 @@
       return true;
     }
 
+    function editorCoords(e) {
+      const r = document.getElementById("editor-wrap").getBoundingClientRect();
+      return { ex: e.clientX - r.left, ey: e.clientY - r.top, inEditor: true };
+    }
+
+    function isOverEditor(e) {
+      const r = document.getElementById("editor-wrap").getBoundingClientRect();
+      return e.clientX >= r.left && e.clientX <= r.right &&
+             e.clientY >= r.top  && e.clientY <= r.bottom;
+    }
+
     // ── Mouse events ──────────────────────────────────────────
     document.addEventListener("mousemove", e => {
       if (!drag && !rsz) return;
-      const wrap = document.getElementById("editor-wrap");
-      const wr   = wrap.getBoundingClientRect();
       const { cw, ch } = cellSize();
       const ghost = document.getElementById("ghost");
 
+      if (drag?.fromPalette) {
+        drag.el.style.left = `${e.clientX - drag.offsetX}px`;
+        drag.el.style.top  = `${e.clientY - drag.offsetY}px`;
+
+        if (isOverEditor(e)) {
+          const { ex, ey } = editorCoords(e);
+          const col   = Math.max(0, Math.round((ex - drag.offsetX) / cw));
+          const row   = Math.max(0, Math.round((ey - drag.offsetY) / ch));
+          const valid = canPlace("__new__", col, row, drag.defaultW, drag.defaultH);
+          ghost.style.display = "block";
+          ghost.style.left    = `${col * cw}px`;
+          ghost.style.top     = `${row * ch}px`;
+          ghost.style.width   = `${drag.defaultW * cw}px`;
+          ghost.style.height  = `${drag.defaultH * ch}px`;
+          ghost.className     = valid ? "valid" : "invalid";
+          ghost.dataset.col   = col;
+          ghost.dataset.row   = row;
+        } else {
+          ghost.style.display = "none";
+        }
+        return;
+      }
+
       if (drag) {
+        const wr  = document.getElementById("editor-wrap").getBoundingClientRect();
         const rawX = e.clientX - wr.left - drag.offsetX;
         const rawY = e.clientY - wr.top  - drag.offsetY;
         drag.el.style.left = `${rawX}px`;
         drag.el.style.top  = `${rawY}px`;
-
-        const col = Math.round(rawX / cw);
-        const row = Math.round(rawY / ch);
+        const col   = Math.round(rawX / cw);
+        const row   = Math.round(rawY / ch);
         const { w, h } = drag.widget.position;
         const valid = canPlace(drag.widget.id, col, row, w, h);
-
         ghost.style.display = "block";
         ghost.style.left    = `${col * cw}px`;
         ghost.style.top     = `${row * ch}px`;
         ghost.style.width   = `${w * cw}px`;
         ghost.style.height  = `${h * ch}px`;
-        ghost.className     = `valid ${valid ? "valid" : "invalid"}`;
+        ghost.className     = valid ? "valid" : "invalid";
         ghost.dataset.col   = col;
         ghost.dataset.row   = row;
       }
@@ -312,16 +459,14 @@
         const { x, y } = rsz.widget.position;
         const w = Math.max(1, Math.min(cols - x, rsz.startW + Math.round(dx / cw)));
         const h = Math.max(1, Math.min(rows - y, rsz.startH + Math.round(dy / ch)));
-        const valid = canPlace(rsz.widget.id, x, y, w, h);
-
         ghost.style.display = "block";
         ghost.style.left    = `${x * cw}px`;
         ghost.style.top     = `${y * ch}px`;
         ghost.style.width   = `${w * cw}px`;
         ghost.style.height  = `${h * ch}px`;
-        ghost.className     = valid ? "valid" : "invalid";
-        ghost.dataset.w     = w;
-        ghost.dataset.h     = h;
+        ghost.className     = canPlace(rsz.widget.id, x, y, w, h) ? "valid" : "invalid";
+        ghost.dataset.w = w;
+        ghost.dataset.h = h;
       }
     });
 
@@ -329,47 +474,63 @@
       const ghost = document.getElementById("ghost");
       ghost.style.display = "none";
 
+      if (drag?.fromPalette) {
+        const proxy = document.getElementById("drag-proxy");
+        proxy.style.display = "none";
+
+        if (isOverEditor(e) && ghost.className === "valid") {
+          const col = parseInt(ghost.dataset.col);
+          const row = parseInt(ghost.dataset.row);
+          cfg.widgets.push({
+            id:       drag.manifest.id,
+            position: { x: col, y: row, w: drag.defaultW, h: drag.defaultH },
+          });
+          setStatus("unsaved changes", "unsaved");
+          buildBlocks();
+          buildPalette();
+        }
+        drag = null;
+        return;
+      }
+
       if (drag) {
-        const wrap = document.getElementById("editor-wrap");
-        const wr   = wrap.getBoundingClientRect();
-        const { cw, ch } = cellSize();
+        const wr   = document.getElementById("editor-wrap").getBoundingClientRect();
         const rawX = e.clientX - wr.left - drag.offsetX;
         const rawY = e.clientY - wr.top  - drag.offsetY;
-        const col  = Math.round(rawX / cw);
-        const row  = Math.round(rawY / ch);
+        const col  = Math.round(rawX / cw_now());
+        const row  = Math.round(rawY / ch_now());
         const { w, h } = drag.widget.position;
-
         if (canPlace(drag.widget.id, col, row, w, h)) {
           drag.widget.position.x = col;
           drag.widget.position.y = row;
           setStatus("unsaved changes", "unsaved");
         }
-
         drag.el.classList.remove("dragging");
         drag = null;
         buildBlocks();
       }
 
       if (rsz) {
-        const { cw, ch } = cellSize();
         const dx  = e.clientX - rsz.startMX;
         const dy  = e.clientY - rsz.startMY;
         const { columns: cols, rows } = cfg.display;
         const { x, y } = rsz.widget.position;
+        const { cw, ch } = cellSize();
         const w = Math.max(1, Math.min(cols - x, rsz.startW + Math.round(dx / cw)));
         const h = Math.max(1, Math.min(rows - y, rsz.startH + Math.round(dy / ch)));
-
         if (canPlace(rsz.widget.id, x, y, w, h)) {
           rsz.widget.position.w = w;
           rsz.widget.position.h = h;
           setStatus("unsaved changes", "unsaved");
         }
-
         rsz.el.classList.remove("dragging");
         rsz = null;
         buildBlocks();
       }
     });
+
+    function cw_now() { return cellSize().cw; }
+    function ch_now() { return cellSize().ch; }
 
     // ── Save ──────────────────────────────────────────────────
     async function saveConfig() {
@@ -394,11 +555,7 @@
       el.className   = cls;
     }
 
-    window.addEventListener("resize", () => {
-      buildGrid();
-      buildBlocks();
-    });
-
+    window.addEventListener("resize", () => { buildGrid(); buildBlocks(); });
     init();
   </script>
 </body>

@@ -1,0 +1,6 @@
+{
+  "id": "calendar",
+  "name": "Calendar",
+  "description": "Monthly calendar with today highlighted and month navigation",
+  "defaultSize": { "w": 3, "h": 3 }
+}
