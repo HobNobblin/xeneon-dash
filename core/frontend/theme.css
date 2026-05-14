@@ -1,0 +1,55 @@
+/* xeneon-dash shared theme
+   Widgets include this via <link rel="stylesheet" href="/theme.css">
+   Override any variable or rule in a widget's own <style> block. */
+
+:root {
+  --bg:           #0d0d1a;
+  --bg-card:      #111128;
+  --bg-raised:    #1a1a30;
+  --accent:       #5555cc;
+  --text:         #c8c8ff;
+  --text-dim:     #6060a0;
+  --text-muted:   #404070;
+  --up:           #00c850;
+  --down:         #dc2828;
+  --font:         'Courier New', monospace;
+  --title-size:   17px;
+  --meta-size:    10px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background:  var(--bg);
+  color:       var(--text);
+  font-family: var(--font);
+  height:      100vh;
+  overflow:    hidden;
+  display:     flex;
+  flex-direction: column;
+  padding:     14px;
+  gap:         10px;
+}
+
+.widget-header {
+  display:         flex;
+  justify-content: space-between;
+  align-items:     baseline;
+  flex-shrink:     0;
+}
+
+.title {
+  font-size:      var(--title-size);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  color:          var(--accent);
+}
+
+.meta {
+  font-size: var(--meta-size);
+  color:     var(--text-muted);
+}

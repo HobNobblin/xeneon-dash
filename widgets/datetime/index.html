@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/theme.css">
+  <style>
+    body {
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .time {
+      font-size: clamp(36px, 8vw, 72px);
+      font-weight: bold;
+      color: #ffffff;
+      letter-spacing: 4px;
+      line-height: 1;
+    }
+
+    .time .seconds {
+      color: #5555cc;
+    }
+
+    .date {
+      font-size: clamp(15px, 2vw, 16px);
+      color: #6060a0;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .seconds-bar-track {
+      width: 80%;
+      height: 2px;
+      background: var(--bg-raised);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .seconds-bar-fill {
+      height: 100%;
+      background: #5555cc;
+      border-radius: 2px;
+      transition: width 1s linear;
+    }
+  </style>
+</head>
+<body>
+  <div class="time">
+    <span id="hm">00:00</span><span class="seconds">:<span id="ss">00</span></span>
+  </div>
+  <div class="seconds-bar-track">
+    <div class="seconds-bar-fill" id="bar"></div>
+  </div>
+  <div class="date" id="date">—</div>
+
+  <script>
+    const DAYS   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const MONTHS = ["January","February","March","April","May","June",
+                    "July","August","September","October","November","December"];
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+
+    function tick() {
+      const now = new Date();
+      const h = pad(now.getHours());
+      const m = pad(now.getMinutes());
+      const s = now.getSeconds();
+
+      document.getElementById("hm").textContent  = `${h}:${m}`;
+      document.getElementById("ss").textContent  = pad(s);
+      document.getElementById("bar").style.width = `${(s / 59) * 100}%`;
+      document.getElementById("date").textContent =
+        `${DAYS[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>

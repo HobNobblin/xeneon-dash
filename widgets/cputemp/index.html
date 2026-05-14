@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/theme.css">
+  <style>
+    body { gap: 6px; padding-bottom: 10px; }
+
+    #gauge-canvas {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+    }
+
+    #spark-canvas {
+      width: 100%;
+      height: 18%;
+      flex-shrink: 0;
+    }
+
+    #no-data {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #404070;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="title">CPU Temp</div>
+  <canvas id="gauge-canvas"></canvas>
+  <canvas id="spark-canvas"></canvas>
+  <div id="no-data" style="display:none">no sensor</div>
+
+  <script src="/xeneon.js"></script>
+  <script>
+    const HISTORY_LEN = 60;
+    const MIN_TEMP    = 30;
+    const MAX_TEMP    = 100;
+    const GAU_START   = (210 * Math.PI) / 180;
+    const GAU_SWEEP   = (240 * Math.PI) / 180;
+
+    const history = [];
+    let   hasData = false;
+
+    function tempColor(t) {
+      if (t < 60) return "#4488ff";
+      if (t < 70) return "#44ddaa";
+      if (t < 80) return "#ffaa00";
+      return "#dc2828";
+    }
+
+    function setupCanvas(canvas) {
+      const dpr  = window.devicePixelRatio || 1;
+      const cssW = canvas.offsetWidth;
+      const cssH = canvas.offsetHeight;
+      canvas.width  = cssW * dpr;
+      canvas.height = cssH * dpr;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+      return { ctx, cssW, cssH };
+    }
+
+    function drawGauge(temp) {
+      const canvas = document.getElementById("gauge-canvas");
+      const { ctx, cssW, cssH } = setupCanvas(canvas);
+
+      const frac  = Math.max(0, Math.min(1, (temp - MIN_TEMP) / (MAX_TEMP - MIN_TEMP)));
+      const color = tempColor(temp);
+      const cx    = cssW / 2;
+      const cy    = cssH * 0.56;
+      const r     = Math.min(cssW * 0.42, cssH * 0.68);
+      const lw    = r * 0.13;
+
+      ctx.clearRect(0, 0, cssW, cssH);
+
+      // Background arc
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, GAU_START, GAU_START + GAU_SWEEP);
+      ctx.strokeStyle = "#1a1a30";
+      ctx.lineWidth   = lw;
+      ctx.lineCap     = "round";
+      ctx.stroke();
+
+      if (frac > 0) {
+        const endAngle = GAU_START + frac * GAU_SWEEP;
+
+        // Glow
+        ctx.globalAlpha = 0.18;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, GAU_START, endAngle);
+        ctx.strokeStyle = color;
+        ctx.lineWidth   = lw * 2.2;
+        ctx.lineCap     = "round";
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Value arc
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, GAU_START, endAngle);
+        ctx.strokeStyle = color;
+        ctx.lineWidth   = lw;
+        ctx.lineCap     = "round";
+        ctx.stroke();
+      }
+
+      // Temperature number
+      ctx.fillStyle    = "#ffffff";
+      ctx.font         = `bold ${Math.round(r * 0.52)}px 'Courier New'`;
+      ctx.textAlign    = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${temp}°`, cx, cy);
+
+      // Unit label
+      ctx.fillStyle = color;
+      ctx.font      = `${Math.round(r * 0.16)}px 'Courier New'`;
+      ctx.fillText("celsius", cx, cy + r * 0.36);
+
+      // Range labels at arc endpoints
+      ctx.fillStyle    = "#30305a";
+      ctx.font         = `${Math.round(r * 0.14)}px 'Courier New'`;
+      ctx.textBaseline = "top";
+      const sx = cx + (r + lw) * Math.cos(GAU_START);
+      const sy = cy + (r + lw) * Math.sin(GAU_START);
+      const ex = cx + (r + lw) * Math.cos(GAU_START + GAU_SWEEP);
+      const ey = cy + (r + lw) * Math.sin(GAU_START + GAU_SWEEP);
+      ctx.textAlign = "right"; ctx.fillText(`${MIN_TEMP}°`, sx, sy);
+      ctx.textAlign = "left";  ctx.fillText(`${MAX_TEMP}°`, ex, ey);
+    }
+
+    function drawSparkline(temp) {
+      if (history.length < 2) return;
+      const canvas = document.getElementById("spark-canvas");
+      const { ctx, cssW, cssH } = setupCanvas(canvas);
+
+      const lo    = Math.min(...history) - 1;
+      const hi    = Math.max(...history) + 1;
+      const color = tempColor(temp);
+      const n     = history.length;
+
+      ctx.clearRect(0, 0, cssW, cssH);
+
+      // Fill under line
+      const grad = ctx.createLinearGradient(0, 0, 0, cssH);
+      grad.addColorStop(0, color + "55");
+      grad.addColorStop(1, color + "00");
+      ctx.beginPath();
+      history.forEach((v, i) => {
+        const x = (i / (HISTORY_LEN - 1)) * cssW;
+        const y = cssH - ((v - lo) / (hi - lo)) * cssH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.lineTo((n - 1) / (HISTORY_LEN - 1) * cssW, cssH);
+      ctx.lineTo(0, cssH);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Line
+      ctx.beginPath();
+      history.forEach((v, i) => {
+        const x = (i / (HISTORY_LEN - 1)) * cssW;
+        const y = cssH - ((v - lo) / (hi - lo)) * cssH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+    }
+
+    xeneon.on("tick", ({ cpu }) => {
+      if (cpu.temp == null) {
+        if (!hasData) {
+          document.getElementById("gauge-canvas").style.display = "none";
+          document.getElementById("spark-canvas").style.display = "none";
+          document.getElementById("no-data").style.display      = "flex";
+        }
+        return;
+      }
+
+      if (!hasData) {
+        hasData = true;
+        document.getElementById("no-data").style.display = "none";
+        document.getElementById("gauge-canvas").style.display = "";
+        document.getElementById("spark-canvas").style.display = "";
+      }
+
+      history.push(cpu.temp);
+      if (history.length > HISTORY_LEN) history.shift();
+
+      drawGauge(cpu.temp);
+      drawSparkline(cpu.temp);
+    });
+  </script>
+</body>
+</html>

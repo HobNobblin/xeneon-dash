@@ -1,0 +1,6 @@
+{
+  "id": "datetime",
+  "name": "Date & Time",
+  "description": "Displays the current date and time",
+  "defaultSize": { "w": 3, "h": 3 }
+}

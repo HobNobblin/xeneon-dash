@@ -4,4 +4,16 @@ display:
 
 widgets:
   - id: cpu
-    position: { x: 0, y: 0, w: 6, h: 3 }
+    position: { x: 0, y: 0, w: 3, h: 3 }
+
+  - id: cputemp
+    position: { x: 3, y: 0, w: 2, h: 3 }
+
+  - id: datetime
+    position: { x: 5, y: 0, w: 2, h: 3 }
+
+  - id: stocks
+    position: { x: 7, y: 0, w: 5, h: 3 }
+    config:
+      symbols: ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA"]
+      refresh_interval: 60   # seconds

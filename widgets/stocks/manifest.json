@@ -1,0 +1,6 @@
+{
+  "id": "stocks",
+  "name": "Stock Ticker",
+  "description": "Displays current prices and daily change for a configurable list of symbols",
+  "defaultSize": { "w": 6, "h": 3 }
+}

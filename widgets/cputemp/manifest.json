@@ -1,0 +1,6 @@
+{
+  "id": "cputemp",
+  "name": "CPU Temperature",
+  "description": "Arc gauge showing CPU package temperature with a rolling sparkline",
+  "defaultSize": { "w": 2, "h": 3 }
+}

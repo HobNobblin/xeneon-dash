@@ -4,3 +4,4 @@ psutil>=5.9.0
 pyyaml>=6.0
 PyQt6>=6.4.0
 PyQt6-WebEngine>=6.4.0
+yfinance>=0.2.0

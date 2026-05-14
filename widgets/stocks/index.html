@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/theme.css">
+  <style>
+    /* Views manage their own padding */
+    body { padding: 0; gap: 0; }
+
+    /* ── Ticker view ─────────────────────────────────────── */
+    #ticker-view {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 14px;
+      gap: 10px;
+    }
+
+    #ticker-view header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-shrink: 0;
+    }
+
+    .cards {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 8px;
+      align-content: start;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 6px;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border: 1px solid #1e1e3a;
+      cursor: pointer;
+      transition: border-color 0.8s ease, transform 0.15s ease;
+    }
+
+    .card:hover { transform: scale(1.03); }
+    .card.up   { border-color: rgba(0, 200, 80, 0.5); }
+    .card.down { border-color: rgba(220, 40, 40, 0.5); }
+
+    .symbol { font-size: 16px; font-weight: bold; letter-spacing: 2px; color: #9090dd; }
+    .price  { font-size: 22px; font-weight: bold; color: #ffffff; line-height: 1; }
+    .change { font-size: 12px; font-weight: bold; }
+    .change.up   { color: #00c850; }
+    .change.down { color: #dc2828; }
+    .error  { font-size: 11px; color: #884444; word-break: break-all; }
+
+    /* ── Chart view ──────────────────────────────────────── */
+    #chart-view {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      padding: 14px;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    #chart-view.visible { display: flex; }
+
+    #chart-view header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-shrink: 0;
+    }
+
+    .chart-symbol { font-size: 16px; font-weight: bold; letter-spacing: 3px; color: #9090dd; }
+
+    .chart-stats { display: flex; gap: 16px; align-items: baseline; }
+
+    .chart-price { font-size: 24px; font-weight: bold; color: #ffffff; }
+
+    .chart-change { font-size: 13px; font-weight: bold; }
+    .chart-change.up   { color: #00c850; }
+    .chart-change.down { color: #dc2828; }
+
+    .hint { font-size: 10px; color: #303060; letter-spacing: 1px; }
+
+    #chart-canvas {
+      flex: 1;
+      width: 100%;
+      display: block;
+    }
+
+    .chart-loading {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #404070;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ticker view -->
+  <div id="ticker-view">
+    <header>
+      <span class="title">Stocks</span>
+      <span class="meta" id="meta">loading…</span>
+    </header>
+    <div class="cards" id="cards"></div>
+  </div>
+
+  <!-- Chart view -->
+  <div id="chart-view">
+    <header>
+      <span class="chart-symbol" id="chart-symbol">—</span>
+      <div class="chart-stats">
+        <span class="chart-price" id="chart-price">—</span>
+        <span class="chart-change" id="chart-change">—</span>
+      </div>
+      <span class="hint">tap to close</span>
+    </header>
+    <canvas id="chart-canvas"></canvas>
+    <div class="chart-loading" id="chart-loading">loading…</div>
+  </div>
+
+  <script src="/xeneon.js"></script>
+  <script>
+    let symbols    = [];
+    let intervalMs = 60000;
+    let timer      = null;
+    let quotes     = [];
+
+    // ── Helpers ──────────────────────────────────────────────
+
+    function fmt(n, dp = 2) { return Number(n).toFixed(dp); }
+
+    // ── Ticker view ──────────────────────────────────────────
+
+    function renderCards(data) {
+      const container = document.getElementById("cards");
+      container.innerHTML = "";
+      quotes = data;
+
+      for (const q of data) {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        if (q.error) {
+          card.innerHTML = `<div class="symbol">${q.symbol}</div>
+                            <div class="error">${q.error}</div>`;
+        } else {
+          const dir  = q.change >= 0 ? "up" : "down";
+          const sign = q.change >= 0 ? "+" : "";
+          card.classList.add(dir);
+          card.innerHTML = `
+            <div class="symbol">${q.symbol}</div>
+            <div class="price">$${fmt(q.price)}</div>
+            <div class="change ${dir}">${sign}${fmt(q.change)} &nbsp; ${sign}${fmt(q.change_pct)}%</div>`;
+          card.addEventListener("click", () => openChart(q));
+        }
+
+        container.appendChild(card);
+      }
+
+      document.getElementById("meta").textContent =
+        new Date().toLocaleTimeString();
+    }
+
+    async function fetchQuotes() {
+      if (!symbols.length) return;
+      try {
+        const res = await fetch(`/api/widgets/stocks/quotes?symbols=${symbols.join(",")}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        renderCards(await res.json());
+      } catch (e) {
+        document.getElementById("meta").textContent = "fetch failed";
+        console.error("stocks fetch error:", e);
+      }
+    }
+
+    // ── Chart view ───────────────────────────────────────────
+
+    async function openChart(quote) {
+      document.getElementById("ticker-view").style.display = "none";
+      const view = document.getElementById("chart-view");
+      view.classList.add("visible");
+
+      const dir  = quote.change >= 0 ? "up" : "down";
+      const sign = quote.change >= 0 ? "+" : "";
+      document.getElementById("chart-symbol").textContent = quote.symbol;
+      document.getElementById("chart-price").textContent  = `$${fmt(quote.price)}`;
+      const changeEl = document.getElementById("chart-change");
+      changeEl.textContent  = `${sign}${fmt(quote.change)} (${sign}${fmt(quote.change_pct)}%)`;
+      changeEl.className    = `chart-change ${dir}`;
+
+      const canvas  = document.getElementById("chart-canvas");
+      const loading = document.getElementById("chart-loading");
+      canvas.style.display  = "none";
+      loading.style.display = "flex";
+
+      try {
+        const res  = await fetch(`/api/widgets/stocks/history?symbol=${quote.symbol}`);
+        const data = await res.json();
+        loading.style.display = "none";
+        canvas.style.display  = "block";
+        drawChart(canvas, data, quote);
+      } catch (e) {
+        loading.textContent = "chart unavailable";
+        console.error("history fetch error:", e);
+      }
+    }
+
+    function closeChart() {
+      document.getElementById("chart-view").classList.remove("visible");
+      document.getElementById("ticker-view").style.display = "flex";
+    }
+
+    document.getElementById("chart-view").addEventListener("click", closeChart);
+
+    // ── Canvas chart ─────────────────────────────────────────
+
+    function drawChart(canvas, data, quote) {
+      const dpr  = window.devicePixelRatio || 1;
+      const cssW = canvas.offsetWidth;
+      const cssH = canvas.offsetHeight;
+      canvas.width  = cssW * dpr;
+      canvas.height = cssH * dpr;
+
+      const ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+
+      const W = cssW, H = cssH;
+      const pad = { top: 16, right: 72, bottom: 32, left: 10 };
+      const cW  = W - pad.left - pad.right;
+      const cH  = H - pad.top  - pad.bottom;
+
+      const prices   = data.map(d => d.close);
+      const openPrice = data[0]?.open ?? quote.price;
+      const minP = Math.min(...prices) * 0.9995;
+      const maxP = Math.max(...prices) * 1.0005;
+
+      const xAt = i => pad.left + (i / Math.max(prices.length - 1, 1)) * cW;
+      const yAt = p => pad.top + cH - ((p - minP) / (maxP - minP)) * cH;
+
+      const isUp = quote.change >= 0;
+      const color = isUp ? "#00c850" : "#dc2828";
+
+      // Background
+      ctx.fillStyle = "#0d0d1a";
+      ctx.fillRect(0, 0, W, H);
+
+      // Horizontal grid + y labels
+      ctx.font      = "10px 'Courier New'";
+      ctx.textAlign = "left";
+      const gridLines = 5;
+      for (let i = 0; i <= gridLines; i++) {
+        const p = minP + (maxP - minP) * (i / gridLines);
+        const y = yAt(p);
+        ctx.strokeStyle = "rgba(60,60,100,0.25)";
+        ctx.lineWidth   = 0.5;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(W - pad.right, y);
+        ctx.stroke();
+        ctx.fillStyle = "#505080";
+        ctx.fillText(`$${fmt(p)}`, W - pad.right + 4, y + 4);
+      }
+
+      // Open price dashed line
+      const openY = yAt(openPrice);
+      ctx.strokeStyle = "rgba(120,120,200,0.5)";
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(pad.left, openY);
+      ctx.lineTo(W - pad.right, openY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(120,120,200,0.7)";
+      ctx.textAlign = "left";
+      ctx.fillText(`open $${fmt(openPrice)}`, W - pad.right + 4, openY - 3);
+
+      // Area fill
+      const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + cH);
+      grad.addColorStop(0, isUp ? "rgba(0,200,80,0.25)"   : "rgba(220,40,40,0.25)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.beginPath();
+      ctx.moveTo(xAt(0), yAt(prices[0]));
+      for (let i = 1; i < prices.length; i++) ctx.lineTo(xAt(i), yAt(prices[i]));
+      ctx.lineTo(xAt(prices.length - 1), pad.top + cH);
+      ctx.lineTo(xAt(0),                 pad.top + cH);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Price line
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 2;
+      ctx.moveTo(xAt(0), yAt(prices[0]));
+      for (let i = 1; i < prices.length; i++) ctx.lineTo(xAt(i), yAt(prices[i]));
+      ctx.stroke();
+
+      // Current price dot
+      const lastX = xAt(prices.length - 1);
+      const lastY = yAt(prices[prices.length - 1]);
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // X axis time labels
+      ctx.fillStyle = "#505080";
+      ctx.font      = "10px 'Courier New'";
+      ctx.textAlign = "center";
+      const step = Math.ceil(prices.length / 8);
+      for (let i = 0; i < data.length; i += step) {
+        ctx.fillText(data[i].time, xAt(i), H - 8);
+      }
+    }
+
+    // ── Init ─────────────────────────────────────────────────
+
+    xeneon.on("ready", (config) => {
+      symbols    = (config.symbols ?? []).map(s => s.toUpperCase());
+      intervalMs = (config.refresh_interval ?? 60) * 1000;
+      if (timer) clearInterval(timer);
+      fetchQuotes();
+      timer = setInterval(fetchQuotes, intervalMs);
+    });
+  </script>
+</body>
+</html>

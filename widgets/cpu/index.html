@@ -2,33 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="stylesheet" href="/theme.css">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: #0d0d1a;
-      color: #c8c8ff;
-      font-family: 'Courier New', monospace;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      padding: 14px;
-      gap: 10px;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-    }
-
-    .title {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 3px;
-      color: #5555cc;
-    }
-
     .summary {
       display: flex;
       gap: 16px;
@@ -40,11 +15,6 @@
       font-weight: bold;
       color: #aaaaff;
       line-height: 1;
-    }
-
-    .meta {
-      font-size: 11px;
-      color: #606090;
     }
 
     .cores {
@@ -66,7 +36,7 @@
     .bar-track {
       flex: 1;
       width: 100%;
-      background: #1a1a30;
+      background: var(--bg-raised);
       border-radius: 3px;
       position: relative;
       overflow: hidden;
@@ -83,7 +53,7 @@
 
     .core-label {
       font-size: 9px;
-      color: #50508a;
+      color: var(--text-dim);
       letter-spacing: 1px;
     }
 
@@ -96,7 +66,7 @@
   </style>
 </head>
 <body>
-  <header>
+  <header class="widget-header">
     <span class="title">CPU</span>
     <div class="summary">
       <span class="big-pct" id="overall">—</span>
