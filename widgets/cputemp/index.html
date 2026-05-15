@@ -68,6 +68,12 @@
       const canvas = document.getElementById("gauge-canvas");
       const { ctx, cssW, cssH } = setupCanvas(canvas);
 
+      const imperial  = xeneon.units === "imperial";
+      const displayT  = imperial ? Math.round(temp * 9/5 + 32) : temp;
+      const unitLabel = imperial ? "fahrenheit" : "celsius";
+      const minLabel  = imperial ? Math.round(MIN_TEMP * 9/5 + 32) : MIN_TEMP;
+      const maxLabel  = imperial ? Math.round(MAX_TEMP * 9/5 + 32) : MAX_TEMP;
+
       const frac  = Math.max(0, Math.min(1, (temp - MIN_TEMP) / (MAX_TEMP - MIN_TEMP)));
       const color = tempColor(temp);
       const cx    = cssW / 2;
@@ -112,12 +118,12 @@
       ctx.font         = `bold ${Math.round(r * 0.52)}px 'Courier New'`;
       ctx.textAlign    = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(`${temp}°`, cx, cy);
+      ctx.fillText(`${displayT}°`, cx, cy);
 
       // Unit label
       ctx.fillStyle = color;
       ctx.font      = `${Math.round(r * 0.16)}px 'Courier New'`;
-      ctx.fillText("celsius", cx, cy + r * 0.36);
+      ctx.fillText(unitLabel, cx, cy + r * 0.36);
 
       // Range labels at arc endpoints
       ctx.fillStyle    = "#30305a";
@@ -127,8 +133,8 @@
       const sy = cy + (r + lw) * Math.sin(GAU_START);
       const ex = cx + (r + lw) * Math.cos(GAU_START + GAU_SWEEP);
       const ey = cy + (r + lw) * Math.sin(GAU_START + GAU_SWEEP);
-      ctx.textAlign = "right"; ctx.fillText(`${MIN_TEMP}°`, sx, sy);
-      ctx.textAlign = "left";  ctx.fillText(`${MAX_TEMP}°`, ex, ey);
+      ctx.textAlign = "right"; ctx.fillText(`${minLabel}°`, sx, sy);
+      ctx.textAlign = "left";  ctx.fillText(`${maxLabel}°`, ex, ey);
     }
 
     function drawSparkline(temp) {

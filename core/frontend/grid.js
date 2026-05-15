@@ -7,8 +7,8 @@ async function buildLayout() {
 
   const grid = document.getElementById("grid");
   grid.innerHTML = "";
-  grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
-  grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+  grid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+  grid.style.gridTemplateRows    = `repeat(${rows}, minmax(0, 1fr))`;
 
   iframes = [];
 
@@ -21,7 +21,7 @@ async function buildLayout() {
     iframe.style.gridRow = `${p.y + 1} / span ${p.h}`;
 
     iframe.addEventListener("load", () => {
-      iframe.contentWindow?.postMessage({ type: "init", config: widgetConfig, location: siteLocation }, "*");
+      iframe.contentWindow?.postMessage({ type: "init", config: widgetConfig, location: siteLocation, units: config.display?.units ?? "metric" }, "*");
     });
 
     grid.appendChild(iframe);

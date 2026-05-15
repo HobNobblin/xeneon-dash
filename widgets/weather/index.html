@@ -475,7 +475,7 @@
       const loc           = xeneon.location ?? {};
       const latitude      = cfg.latitude      ?? loc.latitude;
       const longitude     = cfg.longitude     ?? loc.longitude;
-      const units         = cfg.units         ?? "metric";
+      const units         = cfg.units         ?? xeneon.units ?? "metric";
       const location_name = cfg.location_name ?? loc.name;
 
       if (latitude == null || longitude == null) {

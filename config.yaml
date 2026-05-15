@@ -6,6 +6,7 @@ location:
 display:
   columns: 12
   rows: 6
+  units: imperial
 widgets:
 - id: datetime
   position:
@@ -41,18 +42,35 @@ widgets:
     x: 0
     y: 0
     w: 4
-    h: 4
+    h: 3
 - id: weather
   position:
     x: 8
     y: 4
     w: 4
     h: 2
-  config:
-    units: imperial
 - id: cpu
   position:
     x: 0
-    y: 4
+    y: 3
     w: 4
     h: 2
+- id: launcher
+  position:
+    x: 0
+    y: 5
+    w: 4
+    h: 1
+  config:
+    items:
+    - label: Config
+      icon: ⚙️
+      action: config
+    - label: Terminal
+      icon: 💻
+      action: app
+      command: gnome-terminal
+    - label: Firefox
+      icon: 🦊
+      action: app
+      command: firefox
