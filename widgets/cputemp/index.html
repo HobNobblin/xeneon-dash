@@ -71,8 +71,8 @@
       const frac  = Math.max(0, Math.min(1, (temp - MIN_TEMP) / (MAX_TEMP - MIN_TEMP)));
       const color = tempColor(temp);
       const cx    = cssW / 2;
-      const cy    = cssH * 0.56;
-      const r     = Math.min(cssW * 0.42, cssH * 0.68);
+      const cy    = cssH / 2;
+      const r     = Math.min(cssW, cssH) * 0.42;
       const lw    = r * 0.13;
 
       ctx.clearRect(0, 0, cssW, cssH);

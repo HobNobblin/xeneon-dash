@@ -39,13 +39,13 @@ widgets:
 - id: cpu
   position:
     x: 0
-    y: 0
+    y: 2
     w: 4
     h: 1
 - id: cputemp
   position:
     x: 0
-    y: 1
+    y: 0
     w: 4
     h: 2
 - id: weather
