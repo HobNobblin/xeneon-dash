@@ -249,6 +249,7 @@
   <div class="widget-header">
     <span class="title">Layout Config</span>
     <div class="toolbar">
+      <button onclick="window.location.href='/'">← Dashboard</button>
       <button onclick="saveConfig()">Save</button>
       <span id="status" class="unsaved"></span>
       <span class="hint-text">drag to move &nbsp;·&nbsp; drag corner to resize &nbsp;·&nbsp; drag from palette to add</span>
@@ -449,8 +450,8 @@
           proxy.style.left         = `${e.clientX - 30}px`;
           proxy.style.top          = `${e.clientY - 16}px`;
 
-          const defaultW = m.defaultSize?.w ?? 3;
-          const defaultH = m.defaultSize?.h ?? 3;
+          const defaultW = 1;
+          const defaultH = 1;
 
           drag = {
             widget: null,

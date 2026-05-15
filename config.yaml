@@ -5,20 +5,20 @@ location:
   timezone: America/New_York
 display:
   columns: 12
-  rows: 3
+  rows: 6
 widgets:
 - id: datetime
   position:
     x: 4
     y: 0
     w: 4
-    h: 1
+    h: 2
 - id: stocks
   position:
     x: 8
     y: 0
     w: 4
-    h: 2
+    h: 4
   config:
     symbols:
     - ^IXIC
@@ -33,26 +33,26 @@ widgets:
 - id: calendar
   position:
     x: 4
-    y: 1
-    w: 4
-    h: 2
-- id: cpu
-  position:
-    x: 0
     y: 2
     w: 4
-    h: 1
+    h: 4
 - id: cputemp
   position:
     x: 0
     y: 0
     w: 4
-    h: 2
+    h: 4
 - id: weather
   position:
     x: 8
-    y: 2
+    y: 4
     w: 4
-    h: 1
+    h: 2
   config:
     units: imperial
+- id: cpu
+  position:
+    x: 0
+    y: 4
+    w: 4
+    h: 2

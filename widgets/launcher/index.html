@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/theme.css">
+  <style>
+    body {
+      justify-content: center;
+      padding: 8px 14px;
+      gap: 0;
+    }
+
+    #buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .launch-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: var(--bg-card);
+      border: 1px solid var(--bg-raised);
+      border-radius: 8px;
+      padding: 6px 14px;
+      cursor: pointer;
+      user-select: none;
+      font-family: var(--font);
+      color: var(--text);
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .launch-btn:hover  { background: var(--bg-raised); border-color: var(--accent); }
+    .launch-btn:active { transform: scale(0.95); }
+
+    .btn-icon  {
+      font-size: clamp(18px, 2.5vw, 30px);
+      line-height: 1;
+    }
+
+    .btn-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    #empty {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="buttons">
+    <span id="empty" style="display:none">no items configured</span>
+  </div>
+
+  <script src="/xeneon.js"></script>
+  <script>
+    xeneon.on("ready", cfg => {
+      const items = Array.isArray(cfg.items) ? cfg.items : [];
+      if (items.length === 0) {
+        document.getElementById("empty").style.display = "";
+        return;
+      }
+
+      const container = document.getElementById("buttons");
+      for (const item of items) {
+        const btn = document.createElement("button");
+        btn.className = "launch-btn";
+        btn.innerHTML = `
+          <span class="btn-icon">${item.icon ?? "▶"}</span>
+          <span class="btn-label">${item.label ?? ""}</span>`;
+        btn.addEventListener("click", () => handleAction(item));
+        container.appendChild(btn);
+      }
+    });
+
+    async function handleAction(item) {
+      switch (item.action) {
+        case "config":
+          window.top.location.href = "/config";
+          break;
+
+        case "url":
+          window.top.open(item.url, item.target ?? "_blank");
+          break;
+
+        case "app":
+          try {
+            await fetch("/api/widgets/launcher/launch", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ command: item.command }),
+            });
+          } catch (e) {
+            console.error("launch failed:", e);
+          }
+          break;
+      }
+    }
+  </script>
+</body>
+</html>

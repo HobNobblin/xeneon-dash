@@ -1,0 +1,5 @@
+{
+  "id": "launcher",
+  "name": "Quick Launch",
+  "defaultSize": { "w": 4, "h": 1 }
+}
