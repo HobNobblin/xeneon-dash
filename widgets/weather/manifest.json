@@ -1,0 +1,6 @@
+{
+  "id": "weather",
+  "name": "Weather",
+  "description": "Current conditions and 7-day forecast via Open-Meteo (no API key required)",
+  "defaultSize": { "w": 4, "h": 3 }
+}

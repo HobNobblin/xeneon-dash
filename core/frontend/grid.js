@@ -1,12 +1,16 @@
-async function init() {
+let iframes = [];
+
+async function buildLayout() {
   const config = await fetch("/api/config").then(r => r.json());
   const { columns, rows } = config.display;
+  const siteLocation = config.location ?? {};
 
   const grid = document.getElementById("grid");
+  grid.innerHTML = "";
   grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
   grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
 
-  const iframes = [];
+  iframes = [];
 
   for (const widget of config.widgets ?? []) {
     const { id, position: p, config: widgetConfig = {} } = widget;
@@ -17,23 +21,27 @@ async function init() {
     iframe.style.gridRow = `${p.y + 1} / span ${p.h}`;
 
     iframe.addEventListener("load", () => {
-      iframe.contentWindow?.postMessage({ type: "init", config: widgetConfig }, "*");
+      iframe.contentWindow?.postMessage({ type: "init", config: widgetConfig, location: siteLocation }, "*");
     });
 
     grid.appendChild(iframe);
     iframes.push(iframe);
   }
+}
 
+function connectWS() {
   const ws = new WebSocket(`ws://${location.host}/ws`);
+
   ws.onmessage = ({ data }) => {
     const msg = JSON.parse(data);
-    if (msg.type === "reload") { init(); return; }
+    if (msg.type === "reload") { buildLayout(); return; }
     for (const iframe of iframes) {
       iframe.contentWindow?.postMessage(msg, "*");
     }
   };
 
-  ws.onclose = () => setTimeout(init, 2000); // reconnect on server restart
+  ws.onclose = () => setTimeout(connectWS, 2000);
 }
 
-init();
+buildLayout();
+connectWS();

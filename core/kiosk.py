@@ -16,6 +16,10 @@ win = Gtk.Window(type=Gtk.WindowType.POPUP)
 win.move(435, 1440)
 win.resize(2560, 720)
 
+# Use DOCUMENT_VIEWER cache model so localhost JS/CSS is never served stale
+context = WebKit2.WebContext.get_default()
+context.set_cache_model(WebKit2.CacheModel.DOCUMENT_VIEWER)
+
 webview = WebKit2.WebView()
 settings = webview.get_settings()
 settings.set_property("hardware-acceleration-policy",

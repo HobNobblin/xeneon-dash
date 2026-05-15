@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="/theme.css">
+  <style>
+    body { gap: 10px; }
+
+    /* ── Header ──────────────────────────────────────────────── */
+    .location { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+    .updated  { font-size: 10px; color: var(--text-muted); }
+
+    /* ── Current conditions ──────────────────────────────────── */
+    #current {
+      flex: 1.4;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      min-height: 0;
+      padding: 0 4px;
+    }
+
+    .cur-icon {
+      font-size: clamp(48px, 8vw, 80px);
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .cur-main { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+
+    .cur-temp {
+      font-size: clamp(36px, 7vw, 68px);
+      font-weight: bold;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .cur-desc {
+      font-size: clamp(12px, 1.6vw, 16px);
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+
+    .cur-details {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-end;
+    }
+
+    .detail-row {
+      font-size: clamp(10px, 1.2vw, 13px);
+      color: var(--text-muted);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .detail-val { color: var(--text); }
+
+    /* ── Divider ─────────────────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: var(--bg-raised);
+      flex-shrink: 0;
+    }
+
+    /* ── Forecast ────────────────────────────────────────────── */
+    #forecast {
+      flex: 1;
+      display: flex;
+      gap: 4px;
+      min-height: 0;
+    }
+
+    .day-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: var(--bg-card);
+      border-radius: 6px;
+      padding: 6px 4px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .day-card:hover { background: var(--bg-raised); }
+    .day-card.today { border: 1px solid var(--accent); }
+
+    .fc-day  { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+    .fc-icon { font-size: clamp(16px, 2.5vw, 26px); line-height: 1; }
+    .fc-high { font-size: clamp(11px, 1.4vw, 14px); font-weight: bold; color: #fff; }
+    .fc-low  { font-size: clamp(10px, 1.2vw, 12px); color: var(--text-muted); }
+
+    /* ── Loading / error ─────────────────────────────────────── */
+    #message {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+    }
+
+    /* ── Day detail overlay ──────────────────────────────────── */
+    #day-detail {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      flex-direction: column;
+      padding: 14px;
+      gap: 10px;
+      z-index: 100;
+    }
+
+    #day-detail.visible { display: flex; }
+
+    .detail-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    #detail-back {
+      background: none;
+      border: 1px solid var(--bg-raised);
+      color: var(--accent);
+      font-family: var(--font);
+      font-size: 11px;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    #detail-back:hover { background: var(--bg-raised); }
+
+    .detail-title {
+      flex: 1;
+      font-size: clamp(13px, 1.6vw, 16px);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text);
+    }
+
+    .detail-body {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    /* Left: icon + temps + stats */
+    .detail-left {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+      justify-content: center;
+    }
+
+    .detail-hero {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .detail-big-icon { font-size: clamp(40px, 6vw, 64px); line-height: 1; }
+
+    .detail-temps-wrap { display: flex; flex-direction: column; gap: 2px; }
+
+    .detail-hi-lo {
+      font-size: clamp(22px, 4vw, 40px);
+      font-weight: bold;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .detail-hi-lo .lo { color: var(--text-dim); font-weight: normal; }
+
+    .detail-desc-text {
+      font-size: clamp(11px, 1.4vw, 14px);
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+
+    .detail-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
+    }
+
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .stat-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .stat-val {
+      font-size: clamp(11px, 1.3vw, 13px);
+      color: var(--text);
+    }
+
+    /* Right: hourly chart */
+    .detail-right {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .chart-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    #hourly-canvas {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="widget-header">
+    <span class="title">Weather</span>
+    <span class="location" id="location"></span>
+    <span class="updated" id="updated"></span>
+  </div>
+
+  <div id="message">loading…</div>
+
+  <div id="current" style="display:none">
+    <div class="cur-icon" id="cur-icon"></div>
+    <div class="cur-main">
+      <div class="cur-temp" id="cur-temp"></div>
+      <div class="cur-desc" id="cur-desc"></div>
+    </div>
+    <div class="cur-details">
+      <div class="detail-row">Feels like <span class="detail-val" id="cur-feels"></span></div>
+      <div class="detail-row">Humidity   <span class="detail-val" id="cur-hum"></span></div>
+      <div class="detail-row">Wind       <span class="detail-val" id="cur-wind"></span></div>
+    </div>
+  </div>
+
+  <div class="divider" id="divider" style="display:none"></div>
+
+  <div id="forecast" style="display:none"></div>
+
+  <!-- Full-screen day detail overlay -->
+  <div id="day-detail">
+    <div class="detail-top">
+      <button id="detail-back">← Back</button>
+      <div class="detail-title" id="detail-title"></div>
+    </div>
+    <div class="detail-body">
+      <div class="detail-left">
+        <div class="detail-hero">
+          <div class="detail-big-icon" id="detail-icon"></div>
+          <div class="detail-temps-wrap">
+            <div class="detail-hi-lo">
+              <span id="detail-hi"></span><span class="lo"> / <span id="detail-lo"></span></span>
+            </div>
+            <div class="detail-desc-text" id="detail-desc"></div>
+          </div>
+        </div>
+        <div class="detail-stats">
+          <div class="stat-item">
+            <span class="stat-label">Precip chance</span>
+            <span class="stat-val" id="stat-precip"></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Wind</span>
+            <span class="stat-val" id="stat-wind"></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">UV Index</span>
+            <span class="stat-val" id="stat-uv"></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Sunrise</span>
+            <span class="stat-val" id="stat-sunrise"></span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Sunset</span>
+            <span class="stat-val" id="stat-sunset"></span>
+          </div>
+        </div>
+      </div>
+      <div class="detail-right">
+        <div class="chart-label">Hourly temperature</div>
+        <canvas id="hourly-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script src="/xeneon.js"></script>
+  <script>
+    const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    let _units = {};
+
+    function dayName(dateStr) {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return DAYS[new Date(y, m - 1, d).getDay()];
+    }
+
+    function fullDate(dateStr) {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const dt = new Date(y, m - 1, d);
+      return `${DAYS[dt.getDay()]}, ${MONTHS[m - 1]} ${d}`;
+    }
+
+    function uvLabel(uv) {
+      if (uv <= 2) return "Low";
+      if (uv <= 5) return "Moderate";
+      if (uv <= 7) return "High";
+      if (uv <= 10) return "Very High";
+      return "Extreme";
+    }
+
+    function show(id, visible = true) {
+      document.getElementById(id).style.display = visible ? "" : "none";
+    }
+
+    // ── Hourly chart ─────────────────────────────────────────
+    function drawHourly(hours) {
+      const canvas = document.getElementById("hourly-canvas");
+      const dpr    = window.devicePixelRatio || 1;
+      const W      = canvas.clientWidth;
+      const H      = canvas.clientHeight;
+      canvas.width  = W * dpr;
+      canvas.height = H * dpr;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(dpr, dpr);
+
+      if (!hours.length) return;
+
+      const temps = hours.map(h => h.temp);
+      const minT  = Math.min(...temps) - 2;
+      const maxT  = Math.max(...temps) + 2;
+      const pad   = { top: 18, bottom: 24, left: 28, right: 8 };
+      const cw    = W - pad.left - pad.right;
+      const ch    = H - pad.top  - pad.bottom;
+
+      function tx(i)  { return pad.left + (i / (hours.length - 1)) * cw; }
+      function ty(t)  { return pad.top  + (1 - (t - minT) / (maxT - minT)) * ch; }
+
+      // Filled area
+      ctx.beginPath();
+      ctx.moveTo(tx(0), ty(temps[0]));
+      for (let i = 1; i < hours.length; i++) ctx.lineTo(tx(i), ty(temps[i]));
+      ctx.lineTo(tx(hours.length - 1), H - pad.bottom);
+      ctx.lineTo(tx(0), H - pad.bottom);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+      grad.addColorStop(0, "rgba(85,85,204,0.35)");
+      grad.addColorStop(1, "rgba(85,85,204,0.03)");
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Line
+      ctx.beginPath();
+      ctx.moveTo(tx(0), ty(temps[0]));
+      for (let i = 1; i < hours.length; i++) ctx.lineTo(tx(i), ty(temps[i]));
+      ctx.strokeStyle = "rgba(140,140,220,0.9)";
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+
+      // Hour labels & temp labels every 3 hours
+      ctx.fillStyle  = "rgba(104,104,160,0.9)";
+      ctx.font       = `${Math.max(9, Math.min(10, W / 30))}px 'Courier New', monospace`;
+      ctx.textAlign  = "center";
+
+      for (let i = 0; i < hours.length; i += 3) {
+        const x = tx(i);
+        const h = hours[i].hour;
+        const label = h === 0 ? "12a" : h < 12 ? `${h}a` : h === 12 ? "12p" : `${h - 12}p`;
+        ctx.fillText(label, x, H - pad.bottom + 12);
+        ctx.fillText(String(hours[i].temp), x, ty(temps[i]) - 4);
+      }
+
+      // Min/max axis labels
+      ctx.textAlign = "right";
+      ctx.fillStyle = "rgba(104,104,160,0.6)";
+      ctx.fillText(String(Math.round(maxT)), pad.left - 3, pad.top + 4);
+      ctx.fillText(String(Math.round(minT)), pad.left - 3, H - pad.bottom - 2);
+    }
+
+    // ── Detail overlay ───────────────────────────────────────
+    function openDetail(day) {
+      document.getElementById("detail-title").textContent = fullDate(day.date);
+      document.getElementById("detail-icon").textContent  = day.icon;
+      document.getElementById("detail-hi").textContent    = `${day.high}${_units.temp}`;
+      document.getElementById("detail-lo").textContent    = `${day.low}${_units.temp}`;
+      document.getElementById("detail-desc").textContent  = day.desc;
+      document.getElementById("stat-precip").textContent  = `${day.precip_prob}%`;
+      document.getElementById("stat-wind").textContent    = `${day.wind_max} ${_units.wind} ${day.wind_dir}`;
+      document.getElementById("stat-uv").textContent      = `${day.uv_max} ${uvLabel(day.uv_max)}`;
+      document.getElementById("stat-sunrise").textContent = day.sunrise;
+      document.getElementById("stat-sunset").textContent  = day.sunset;
+
+      document.getElementById("day-detail").classList.add("visible");
+
+      // Draw after the element is visible so clientWidth/Height are correct
+      requestAnimationFrame(() => drawHourly(day.hours));
+    }
+
+    function closeDetail() {
+      document.getElementById("day-detail").classList.remove("visible");
+    }
+
+    document.getElementById("detail-back").addEventListener("click", closeDetail);
+
+    // ── Render ───────────────────────────────────────────────
+    function render(data, cfg) {
+      const { current: c, forecast, units } = data;
+      _units = units;
+
+      document.getElementById("location").textContent = cfg.location_name ?? "";
+      document.getElementById("updated").textContent  =
+        `updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+
+      document.getElementById("cur-icon").textContent  = c.icon;
+      document.getElementById("cur-temp").textContent  = `${c.temp}${units.temp}`;
+      document.getElementById("cur-desc").textContent  = c.desc;
+      document.getElementById("cur-feels").textContent = `${c.feels}${units.temp}`;
+      document.getElementById("cur-hum").textContent   = `${c.humidity}%`;
+      document.getElementById("cur-wind").textContent  = `${c.wind} ${units.wind}`;
+
+      const today = new Date().toISOString().slice(0, 10);
+      const fc    = document.getElementById("forecast");
+      fc.innerHTML = "";
+
+      forecast.forEach((day, i) => {
+        const card = document.createElement("div");
+        card.className = "day-card" + (day.date === today ? " today" : "");
+        card.innerHTML = `
+          <div class="fc-day">${i === 0 ? "Today" : dayName(day.date)}</div>
+          <div class="fc-icon">${day.icon}</div>
+          <div class="fc-high">${day.high}${units.temp}</div>
+          <div class="fc-low">${day.low}${units.temp}</div>`;
+        card.addEventListener("click", () => openDetail(day));
+        fc.appendChild(card);
+      });
+
+      show("message",  false);
+      show("current",  true);
+      show("divider",  true);
+      show("forecast", true);
+    }
+
+    // ── Fetch ────────────────────────────────────────────────
+    async function fetchWeather(cfg) {
+      const loc           = xeneon.location ?? {};
+      const latitude      = cfg.latitude      ?? loc.latitude;
+      const longitude     = cfg.longitude     ?? loc.longitude;
+      const units         = cfg.units         ?? "metric";
+      const location_name = cfg.location_name ?? loc.name;
+
+      if (latitude == null || longitude == null) {
+        document.getElementById("message").textContent = "set latitude & longitude in location config";
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/widgets/weather/data?lat=${latitude}&lon=${longitude}&units=${units}`
+        );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        render(await res.json(), { ...cfg, latitude, longitude, units, location_name });
+      } catch (e) {
+        document.getElementById("message").textContent = "fetch failed";
+        console.error("weather fetch error:", e);
+      }
+    }
+
+    xeneon.on("ready", cfg => {
+      fetchWeather(cfg);
+      setInterval(() => fetchWeather(cfg), 30 * 60 * 1000);
+    });
+  </script>
+</body>
+</html>

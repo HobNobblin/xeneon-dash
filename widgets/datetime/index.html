@@ -54,26 +54,43 @@
   </div>
   <div class="date" id="date">—</div>
 
+  <script src="/xeneon.js"></script>
   <script>
-    const DAYS   = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-    const MONTHS = ["January","February","March","April","May","June",
-                    "July","August","September","October","November","December"];
+    let tz = null;
 
-    function pad(n) { return String(n).padStart(2, "0"); }
-
-    function tick() {
-      const now = new Date();
-      const h = pad(now.getHours());
-      const m = pad(now.getMinutes());
-      const s = now.getSeconds();
-
-      document.getElementById("hm").textContent  = `${h}:${m}`;
-      document.getElementById("ss").textContent  = pad(s);
-      document.getElementById("bar").style.width = `${(s / 59) * 100}%`;
-      document.getElementById("date").textContent =
-        `${DAYS[now.getDay()]}, ${MONTHS[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+    function timeParts() {
+      const fmt = new Intl.DateTimeFormat("en-US", {
+        ...(tz ? { timeZone: tz } : {}),
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+      });
+      const parts = {};
+      fmt.formatToParts(new Date()).forEach(p => { parts[p.type] = p.value; });
+      // hour12:false can yield "24" for midnight in some runtimes
+      const h = String(parseInt(parts.hour) % 24).padStart(2, "0");
+      return { h, m: parts.minute, s: parts.second, sec: parseInt(parts.second) };
     }
 
+    function dateLine() {
+      return new Date().toLocaleDateString("en-US", {
+        ...(tz ? { timeZone: tz } : {}),
+        weekday: "long", year: "numeric", month: "long", day: "numeric",
+      }).toUpperCase();
+    }
+
+    function tick() {
+      const { h, m, s, sec } = timeParts();
+      document.getElementById("hm").textContent  = `${h}:${m}`;
+      document.getElementById("ss").textContent  = s;
+      document.getElementById("bar").style.width = `${(sec / 59) * 100}%`;
+      document.getElementById("date").textContent = dateLine();
+    }
+
+    xeneon.on("ready", cfg => {
+      tz = xeneon.location?.timezone || null;
+      tick();
+    });
+
+    // Start ticking immediately with local time; timezone refines on ready
     tick();
     setInterval(tick, 1000);
   </script>

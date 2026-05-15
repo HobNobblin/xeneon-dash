@@ -130,6 +130,62 @@
     #ghost.valid   { background: rgba(0,200,80,0.12);  border-color: var(--up); }
     #ghost.invalid { background: rgba(220,40,40,0.12); border-color: var(--down); }
 
+    /* ── Location bar ─────────────────────────────────────── */
+    .location-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--bg-raised);
+      border-radius: 6px;
+    }
+
+    .loc-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .loc-field {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .loc-field span {
+      font-size: 10px;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .loc-input {
+      background: var(--bg-raised);
+      border: 1px solid var(--bg-raised);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 11px;
+      padding: 4px 7px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .loc-input:focus { border-color: var(--accent); }
+    .loc-input.narrow { width: 90px; }
+    .loc-input.wide   { width: 200px; }
+
+    .loc-sep {
+      width: 1px;
+      height: 18px;
+      background: var(--bg-raised);
+      flex-shrink: 0;
+    }
+
     /* ── Palette ───────────────────────────────────────────── */
     #palette-wrap {
       flex-shrink: 0;
@@ -199,6 +255,28 @@
     </div>
   </div>
 
+  <div class="location-bar">
+    <span class="loc-label">Location</span>
+    <div class="loc-field">
+      <span>Name</span>
+      <input class="loc-input wide" id="loc-name" type="text" placeholder="e.g. Chicago" />
+    </div>
+    <div class="loc-sep"></div>
+    <div class="loc-field">
+      <span>Lat</span>
+      <input class="loc-input narrow" id="loc-lat" type="number" step="0.0001" placeholder="41.8781" />
+    </div>
+    <div class="loc-field">
+      <span>Lon</span>
+      <input class="loc-input narrow" id="loc-lon" type="number" step="0.0001" placeholder="-87.6298" />
+    </div>
+    <div class="loc-sep"></div>
+    <div class="loc-field">
+      <span>Timezone</span>
+      <input class="loc-input wide" id="loc-tz" type="text" placeholder="e.g. America/Chicago" />
+    </div>
+  </div>
+
   <div id="editor-wrap">
     <div id="grid-bg"></div>
     <div id="ghost"></div>
@@ -240,10 +318,38 @@
           return m;
         }),
       ]);
+      cfg.location ??= {};
+      populateLocation();
       buildGrid();
       buildBlocks();
       buildPalette();
     }
+
+    function populateLocation() {
+      const loc = cfg.location ?? {};
+      document.getElementById("loc-name").value = loc.name      ?? "";
+      document.getElementById("loc-lat").value  = loc.latitude  ?? "";
+      document.getElementById("loc-lon").value  = loc.longitude ?? "";
+      document.getElementById("loc-tz").value   = loc.timezone  ?? "";
+    }
+
+    function readLocation() {
+      const lat = parseFloat(document.getElementById("loc-lat").value);
+      const lon = parseFloat(document.getElementById("loc-lon").value);
+      cfg.location = {
+        name:      document.getElementById("loc-name").value.trim() || "",
+        latitude:  isNaN(lat) ? null : lat,
+        longitude: isNaN(lon) ? null : lon,
+        timezone:  document.getElementById("loc-tz").value.trim() || "",
+      };
+    }
+
+    // Mark unsaved whenever location inputs change
+    ["loc-name","loc-lat","loc-lon","loc-tz"].forEach(id => {
+      document.getElementById(id)?.addEventListener("input", () =>
+        setStatus("unsaved changes", "unsaved")
+      );
+    });
 
     function cellSize() {
       const r = document.getElementById("editor-wrap").getBoundingClientRect();
@@ -534,6 +640,7 @@
 
     // ── Save ──────────────────────────────────────────────────
     async function saveConfig() {
+      readLocation();
       try {
         const res = await fetch("/api/config", {
           method: "POST",

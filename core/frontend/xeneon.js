@@ -4,6 +4,7 @@ window.xeneon = (() => {
 
   const api = {
     config: {},
+    location: {},
 
     on(event, callback) {
       (handlers[event] ??= []).push(callback);
@@ -20,7 +21,8 @@ window.xeneon = (() => {
   window.addEventListener("message", ({ data }) => {
     if (!data?.type) return;
     if (data.type === "init") {
-      api.config = data.config ?? {};
+      api.config   = data.config   ?? {};
+      api.location = data.location ?? {};
       api._emit("ready", api.config);
     } else if (data.type === "tick") {
       api._emit("tick", data.metrics);

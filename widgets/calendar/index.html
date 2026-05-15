@@ -27,7 +27,7 @@
     .nav-btn:hover { background: var(--bg-raised); }
 
     .month-label {
-      font-size:      13px;
+      font-size:      15px;
       font-weight:    bold;
       letter-spacing: 2px;
       color:          var(--text);
@@ -42,7 +42,7 @@
 
     .dow {
       text-align:     center;
-      font-size:      9px;
+      font-size:      12px;
       letter-spacing: 1px;
       text-transform: uppercase;
       color:          var(--text-muted);
@@ -65,7 +65,7 @@
       display:         flex;
       align-items:     center;
       justify-content: center;
-      font-size:       clamp(10px, 1.4vw, 14px);
+      font-size:       clamp(12px, 1.4vw, 14px);
       border-radius:   4px;
       color:           var(--text);
     }
@@ -103,18 +103,32 @@
 
   <div id="day-grid"></div>
 
+  <script src="/xeneon.js"></script>
   <script>
     const MONTHS = [
       "January","February","March","April","May","June",
       "July","August","September","October","November","December",
     ];
 
-    let viewYear, viewMonth;
+    let viewYear, viewMonth, tz = null;
+
+    function todayLocal() {
+      if (!tz) {
+        const n = new Date();
+        return { y: n.getFullYear(), m: n.getMonth(), d: n.getDate() };
+      }
+      const fmt = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz, year: "numeric", month: "numeric", day: "numeric",
+      });
+      const parts = {};
+      fmt.formatToParts(new Date()).forEach(p => { parts[p.type] = p.value; });
+      return { y: parseInt(parts.year), m: parseInt(parts.month) - 1, d: parseInt(parts.day) };
+    }
 
     function init() {
-      const now = new Date();
-      viewYear  = now.getFullYear();
-      viewMonth = now.getMonth();
+      const { y, m } = todayLocal();
+      viewYear  = y;
+      viewMonth = m;
       render();
     }
 
@@ -126,8 +140,8 @@
     }
 
     function render() {
-      const now   = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const { y, m: tm, d: td } = todayLocal();
+      const today = new Date(y, tm, td).getTime();
 
       document.getElementById("month-label").textContent =
         `${MONTHS[viewMonth]} ${viewYear}`;
@@ -170,12 +184,20 @@
     document.getElementById("prev").addEventListener("click", () => changeMonth(-1));
     document.getElementById("next").addEventListener("click", () => changeMonth(1));
 
-    // Refresh at midnight to advance day highlight
+    let midnightTimer = null;
+
     function scheduleNextDay() {
-      const now  = new Date();
-      const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      setTimeout(() => { render(); scheduleNextDay(); }, next - now);
+      clearTimeout(midnightTimer);
+      const { y, m, d } = todayLocal();
+      const nextMidnight = new Date(y, m, d + 1);
+      midnightTimer = setTimeout(() => { render(); scheduleNextDay(); }, nextMidnight - new Date());
     }
+
+    xeneon.on("ready", () => {
+      tz = xeneon.location?.timezone || null;
+      init();
+      scheduleNextDay();
+    });
 
     init();
     scheduleNextDay();
